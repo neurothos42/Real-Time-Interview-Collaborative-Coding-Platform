@@ -36,19 +36,6 @@ interface ProblemDescriptionProps {
     questionId: string;
 }
 
-interface TestCase {
-    id: number;
-    input: string;
-    expected: string;
-}
-
-interface RunOutput {
-    input: string;
-    expected: string;
-    got: string;
-    passed: boolean;
-}
-
 interface RunResult {
     status: string;
     output: string;

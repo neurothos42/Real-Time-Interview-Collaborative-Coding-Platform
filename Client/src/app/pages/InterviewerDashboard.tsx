@@ -1,9 +1,9 @@
 import {
   LayoutDashboard, PlusCircle, Video, User,
-  Clock, CheckCircle, Users, Calendar,
+  Clock, Users, Calendar,
   TrendingUp, Edit3, Eye, Trash2, Copy,
-  Camera, Mail, MapPin, Briefcase, Plus, X, Save,
-  Mic, Loader2, AlertCircle, CheckCircle2,
+  Mail, MapPin, Briefcase, X, Save,
+  Loader2, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -219,7 +219,7 @@ function DashboardSection() {
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#4a6080" }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#4a6080" }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any, name: string, item: any) => {
+                  formatter={(value: any, name: any, item: any) => {
                     if (name === "Interviewer Score" && !item?.payload?.hasInterviewerScore) {
                       return ["Not submitted yet", name];
                     }
@@ -263,7 +263,7 @@ function DashboardSection() {
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#4a6080" }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#4a6080" }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(value: any, name: string) => [`${value}/100`, name]}
+                  formatter={(value: any, name: any) => [`${value}/100`, name]}
                   labelFormatter={(_label, payload) => {
                     const item = payload?.[0]?.payload;
                     return item?.fullName || _label;
@@ -707,7 +707,7 @@ function CurrentRoomsSection({
   refreshTrigger,
   successMessage,
   onClearSuccessMessage,
-  onNewRoom,
+  onNewRoom: _onNewRoom,
 }: CurrentRoomsSectionProps) {
   const navigate = useNavigate();
   const [roomsList, setRoomsList] = useState<InterviewRoomRecord[]>([]);

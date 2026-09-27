@@ -13,6 +13,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import com.interviewplatform.backend.importer.parser.JavaSignatureParser;
 import com.interviewplatform.backend.importer.parser.ExampleParser;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,21 +27,29 @@ public class QuestionDataLoader implements CommandLineRunner {
     private final ObjectMapper objectMapper;
     private final JavaSignatureParser javaSignatureParser;
     private final ExampleParser exampleParser;
+    private final boolean seedEnabled;
 
     public QuestionDataLoader(
             QuestionRepository questionRepository,
             ObjectMapper objectMapper,
             JavaSignatureParser javaSignatureParser,
-            ExampleParser exampleParser
+            ExampleParser exampleParser,
+            @Value("${app.seed.questions.enabled:true}") boolean seedEnabled
     ) {
         this.questionRepository = questionRepository;
         this.objectMapper = objectMapper;
         this.javaSignatureParser = javaSignatureParser;
         this.exampleParser = exampleParser;
+        this.seedEnabled = seedEnabled;
     }
 
     @Override
     public void run(String... args) throws Exception {
+
+        if (!seedEnabled) {
+            log.info("Question dataset import is disabled by configuration (app.seed.questions.enabled=false). Skipping.");
+            return;
+        }
 
         if (questionRepository.count() > 0) {
             log.info("Questions already exist in database. Skipping dataset import.");
@@ -52,6 +61,10 @@ public class QuestionDataLoader implements CommandLineRunner {
 
         Resource[] resources =
                 resolver.getResources("classpath:dataset/problems/*.json");
+
+        boolean hasImportErrors = false;
+        List<Question> batch = new ArrayList<>();
+        int batchSize = 200;
 
         for (Resource resource : resources) {
 
@@ -162,18 +175,50 @@ public class QuestionDataLoader implements CommandLineRunner {
 
                 question.setEstimatedTime(15);
 
-                questionRepository.save(question);
+                batch.add(question);
+                if (batch.size() >= batchSize) {
+                    if (!saveBatch(batch)) {
+                        hasImportErrors = true;
+                    }
+                    batch.clear();
+                }
 
             } catch (Exception e) {
 
+                hasImportErrors = true;
                 log.error("Failed to import problem from {}: {}", resource.getFilename(), e.getMessage());
 
             }
 
         }
 
-        log.info("Dataset import complete. Total questions: {}", questionRepository.count());
+        if (!batch.isEmpty()) {
+            if (!saveBatch(batch)) {
+                hasImportErrors = true;
+            }
+            batch.clear();
+        }
 
+        long totalCount = questionRepository.count();
+        if (hasImportErrors) {
+            log.error("Dataset import completed with ERRORS. Total questions in database: {}", totalCount);
+        } else {
+            log.info("Dataset import complete. Total questions: {}", totalCount);
+        }
+
+    }
+
+    private boolean saveBatch(List<Question> batch) {
+        if (batch == null || batch.isEmpty()) {
+            return true;
+        }
+        try {
+            questionRepository.saveAll(batch);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to save batch of {} questions: {}", batch.size(), e.getMessage(), e);
+            return false;
+        }
     }
 
 }

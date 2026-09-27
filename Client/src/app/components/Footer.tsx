@@ -19,10 +19,9 @@ export function Footer() {
             </p>
           </div>
 
-          {[
-            // { heading: "Product", links: ["Features"] },
-            // { heading: "Support", links: ["Help Center", "Privacy Policy", "Terms of Service", "Contact"] },
-          ].map(({ heading, links }) => (
+          {(
+            [] as { heading: string; links: string[] }[]
+          ).map(({ heading, links }) => (
             <div key={heading}>
               <h4 className="text-white text-sm mb-4" style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>{heading}</h4>
               <ul className="space-y-2.5">

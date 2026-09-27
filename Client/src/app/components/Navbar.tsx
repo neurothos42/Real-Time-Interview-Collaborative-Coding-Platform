@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Menu, X, Video } from "lucide-react";
-import { Link } from "react-router";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);

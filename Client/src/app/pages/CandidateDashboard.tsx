@@ -56,7 +56,6 @@ import {
   deleteSkillApi,
   addTargetApi,
   deleteTargetApi,
-  getQuestionById,
 } from "../../services/candidateService";
 import { getHistory, getInterviewById } from "../../services/history";
 import {
@@ -485,9 +484,6 @@ function DashboardSection({
     data.averageRealInterviewScore ??
     stats.averageRealInterviewScore ??
     null;
-
-  const readinessScore = latestInterview?.evaluation?.overallScore ?? 0;
-  const totalMocks = interviewHistory.length;
 
   const averageScore = computeAverageMockScore(
     interviewHistory,

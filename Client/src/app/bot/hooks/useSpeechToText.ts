@@ -16,6 +16,48 @@ interface UseSpeechToTextResult {
   toggle: () => void;
 }
 
+interface SpeechRecognitionResultItem {
+  readonly transcript: string;
+}
+
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  readonly length: number;
+  readonly [index: number]: SpeechRecognitionResultItem;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  readonly [index: number]: SpeechRecognitionResult;
+}
+
+interface ISpeechRecognitionEvent {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface ISpeechRecognitionErrorEvent {
+  readonly error: string;
+}
+
+interface ISpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onerror: ((event: ISpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => ISpeechRecognition;
+
+interface WindowWithSpeechRecognition {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 /**
  * Wraps window.SpeechRecognition / webkitSpeechRecognition to provide
  * live speech-to-text. Purely additive — never blocks manual typing.
@@ -25,14 +67,15 @@ export function useSpeechToText(
 ): UseSpeechToTextResult {
   const { onTranscriptChange, lang = "en-US" } = options;
 
-  const SpeechRecognitionCtor =
+  const SpeechRecognitionCtor: SpeechRecognitionConstructor | undefined =
     typeof window !== "undefined"
-      ? window.SpeechRecognition || window.webkitSpeechRecognition
+      ? (window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
+        (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
       : undefined;
 
   const isSupported = !!SpeechRecognitionCtor;
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +88,7 @@ export function useSpeechToText(
     recognition.interimResults = true;
     recognition.lang = lang;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: ISpeechRecognitionEvent) => {
       let finalChunk = "";
       let interimChunk = "";
 
@@ -71,7 +114,7 @@ export function useSpeechToText(
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       if (event.error === "no-speech" || event.error === "aborted") return;
       setError(
         event.error === "not-allowed"

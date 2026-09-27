@@ -12,7 +12,7 @@ interface EvaluateInterviewPayload {
   experience: string;
   difficulty: string;
   questions: string[];
-  answers: string[];
+  answers: Record<string, string> | string[];
 }
 
 export const generateQuestions = async ({

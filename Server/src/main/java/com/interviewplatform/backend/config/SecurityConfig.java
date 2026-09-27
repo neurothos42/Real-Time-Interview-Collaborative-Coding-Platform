@@ -1,10 +1,12 @@
 package com.interviewplatform.backend.config;
 
 import com.interviewplatform.backend.jwt.JwtFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -12,16 +14,21 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
+
 @Configuration
 public class SecurityConfig {
 
     // JWT Filter
     private final JwtFilter jwtFilter;
+    private final String allowedOrigins;
 
     // Constructor
     public SecurityConfig(
-            JwtFilter jwtFilter) {
+            JwtFilter jwtFilter,
+            @Value("${cors.allowed-origins:http://localhost:5173}") String allowedOrigins) {
         this.jwtFilter = jwtFilter;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Bean
@@ -36,6 +43,11 @@ public class SecurityConfig {
                 // Enable CORS
                 .cors(cors -> {
                 })
+
+                // Stateless Session Management
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
 
                 // Authorization Rules
                 .authorizeHttpRequests(auth -> auth
@@ -135,7 +147,15 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.addAllowedOrigin("http://localhost:5173");
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(origin -> !origin.isEmpty())
+                    .forEach(configuration::addAllowedOrigin);
+        } else {
+            configuration.addAllowedOrigin("http://localhost:5173");
+        }
+
         configuration.addAllowedHeader("*");
         configuration.addAllowedMethod("*");
         configuration.setAllowCredentials(true);

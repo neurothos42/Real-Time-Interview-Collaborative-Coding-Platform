@@ -106,7 +106,7 @@ export default function RouteError() {
         </p>
 
         {/* Error Code */}
-        {error && (
+        {Boolean(error) && (
           <div
             className="
             mx-auto mt-6

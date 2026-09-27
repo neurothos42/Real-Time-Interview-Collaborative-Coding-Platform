@@ -14,8 +14,6 @@ import {
   type CodeSyncMessage,
   type RunInterviewCodeResponse,
   type InterviewEventMessage,
-  type InterviewScoreRecord,
-  type InterviewRoomScoresResponse,
 } from "../../services/interviewRoomService";
 import {
   Mic, MicOff, Video, VideoOff, Monitor, MonitorOff, Hand, Maximize2, Minimize2,
@@ -145,6 +143,49 @@ function getWebSocketUrl() {
   apiUrl.search = "";
   apiUrl.hash = "";
   return apiUrl.toString();
+}
+
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+];
+
+function getIceServers(): RTCIceServer[] {
+  const envConfig = import.meta.env.VITE_ICE_SERVERS;
+  if (!envConfig || typeof envConfig !== "string" || !envConfig.trim()) {
+    return DEFAULT_ICE_SERVERS;
+  }
+
+  const trimmed = envConfig.trim();
+  try {
+    if (trimmed.startsWith("[")) {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validServers = parsed.filter(
+          (item): item is RTCIceServer =>
+            Boolean(item) &&
+            typeof item === "object" &&
+            (typeof item.urls === "string" || (Array.isArray(item.urls) && item.urls.length > 0))
+        );
+
+        if (validServers.length > 0) {
+          const hasStun = validServers.some((s) => {
+            const urls = Array.isArray(s.urls) ? s.urls : [s.urls];
+            return urls.some((u) => typeof u === "string" && u.includes("stun.l.google.com"));
+          });
+          return hasStun ? validServers : [...DEFAULT_ICE_SERVERS, ...validServers];
+        }
+      }
+    } else {
+      const urlList = trimmed.split(",").map((u) => u.trim()).filter(Boolean);
+      if (urlList.length > 0) {
+        return [...DEFAULT_ICE_SERVERS, { urls: urlList }];
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to parse VITE_ICE_SERVERS, falling back to default STUN configuration:", err);
+  }
+
+  return DEFAULT_ICE_SERVERS;
 }
 
 /* ─── helpers ─── */
@@ -3020,9 +3061,9 @@ function ShortcutModal({ onClose }: { onClose: () => void }) {
 
 function ScoreModalDialog({
   open,
-  onClose,
+  onClose: _onClose,
   isInterviewer,
-  isCandidate,
+  isCandidate: _isCandidate,
   hasAlreadyScored,
   submittedScore,
   alreadySubmittedScore,
@@ -3300,7 +3341,7 @@ export default function InterviewRoom() {
   const timer = useTimer();
   const containerRef = useRef<HTMLDivElement>(null);
   const [presenceStatus, setPresenceStatus] = useState("Connecting");
-  const [presenceMessages, setPresenceMessages] = useState<PresenceMessage[]>([]);
+  const [, setPresenceMessages] = useState<PresenceMessage[]>([]);
 
   const globalRole = getUserRole();
   const [currentUser, setCurrentUser] = useState<User | null>(() => getUser());
@@ -3315,7 +3356,7 @@ export default function InterviewRoom() {
   const isInterviewer = roomRole === "Interviewer" || (!roomRole && globalRole === "interviewer");
   const [isFinishing, setIsFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
-  const [completionNotice, setCompletionNotice] = useState<{
+  const [completionNotice] = useState<{
     show: boolean;
     title: string;
     message: string;
@@ -3978,7 +4019,7 @@ export default function InterviewRoom() {
   useEffect(() => {
     if (roomAuthStatus !== "authorized") return;
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: getIceServers(),
     });
     peerConnectionRef.current = pc;
 
@@ -4085,7 +4126,7 @@ export default function InterviewRoom() {
     const client = new Client({
       brokerURL: getWebSocketUrl(),
       connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: 0,
+      reconnectDelay: 3000,
       onConnect: () => {
         if (isActive) {
           setPresenceStatus("Connected");
