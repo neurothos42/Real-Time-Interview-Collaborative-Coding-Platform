@@ -3,19 +3,24 @@ package com.interviewplatform.backend.jwt;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import io.jsonwebtoken.Claims;
 
 @Component
 public class JwtUtil {
 
-    private final SecretKey SECRET_KEY =
-            Keys.hmacShaKeyFor(
-                    "mysecretkeymysecretkeymysecretkey12345"
-                            .getBytes()
-            );
+    private final SecretKey secretKey;
+
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalArgumentException("JWT secret is not configured");
+        }
+        this.secretKey = Keys.hmacShaKeyFor(secret.trim().getBytes(StandardCharsets.UTF_8));
+    }
 
     public String generateToken(
             String email,
@@ -51,13 +56,13 @@ public class JwtUtil {
                                         + 1000L * 60 * 60 * 24
                         )
                 )
-                .signWith(SECRET_KEY)
+                .signWith(secretKey)
                 .compact();
     }
 
     public String extractEmail(String token) {
         Claims claims = Jwts.parser()
-                .verifyWith(SECRET_KEY)
+                .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -68,7 +73,7 @@ public class JwtUtil {
     public String extractRole(String token) {
 
         Claims claims = Jwts.parser()
-                .verifyWith(SECRET_KEY)
+                .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -79,7 +84,7 @@ public class JwtUtil {
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
-                    .verifyWith(SECRET_KEY)
+                    .verifyWith(secretKey)
                     .build()
                     .parseSignedClaims(token);
 
